@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Google Patents to EndNote Quick Export",
-  "version": "1.1",
+  "version": "1.2",
   "description": "一鍵匯出 Google Patents 資料至 EndNote (.ris/.enw) 格式，包含完整專利資訊",
   "permissions": ["activeTab"],
   "content_scripts": [

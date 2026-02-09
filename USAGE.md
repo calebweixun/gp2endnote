@@ -134,19 +134,20 @@ ER  -
 | 文獻類型 | TY  | %0  | 固定為 "PAT" 或 "Patent" |
 | 標題 | TI  | %T  | 專利名稱 |
 | 發明人 | AU  | %A  | 可以有多個 |
-| 專利權人 | A2  | %+  | 申請人/受讓人 |
-| 年份 | PY  | %D  | 公告年份 |
-| 完整日期 | DA  | %8  | YYYY-MM-DD |
-| 專利號 | M1  | %M  | 公告號 |
-| 申請號 | M2  | %9  | 申請號碼 |
+| 專利權人 | A2  | %E  | Assignee（申請人/受讓人） |
+| 發證機構 | PB  | %I  | Issuing Organization（專利局）|
+| 年份 | PY  | %D  | 公告/核准年份 |
+| 完整日期 | DA  | %8  | YYYY/MM/DD/ (RIS) / YYYY-MM-DD (ENW) |
+| 專利號 | M1  | %@ / %M | 公告號 |
+| 申請號 | SN  | %Z  | 申請號碼 |
 | 國家 | CY  | %C  | 國家代碼 |
-| 種類碼 | M3  | -   | A1, B1, B2 等 |
-| 申請日 | Y2  | -   | 優先權日期 |
+| 專利種類 | M3  | %9  | Patent Type（如 Granted Patent） |
+| 申請日 | Y2  | %[  | 申請日期 |
 | 摘要 | AB  | %X  | 專利摘要 |
 | 關鍵詞 | KW  | %K  | 技術關鍵字 |
 | PDF | L1  | %>  | 原文連結 |
 | URL | UR  | %U  | 網頁連結 |
-| 資料庫 | DB  | -   | 來源標記 |
+| 資料庫 | DB  | %W  | 來源標記 |
 
 ## 常見問題
 
@@ -214,4 +215,4 @@ A: 請檢查：
 
 ---
 
-如有其他問題，請在 [GitHub Issues](https://github.com/你的帳號/gp2endnote/issues) 提出。
+如有其他問題，請在 [GitHub Issues](https://github.com/calebweixun/gp2endnote/issues) 提出。

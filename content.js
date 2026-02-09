@@ -1,38 +1,103 @@
 // 擷取專利頁面資料
 function extractPatentData() {
-    // 專利號碼
-    const patentID = document.querySelector('dd[itemprop="publicationNumber"]')?.innerText?.trim()
+    // 專利號碼 - 多種選擇器和從 URL 提取
+    let patentID = document.querySelector('dd[itemprop="publicationNumber"]')?.innerText?.trim()
         || document.querySelector('span[itemprop="publicationNumber"]')?.innerText?.trim()
-        || "Unknown_ID";
+        || document.querySelector('[itemprop="publicationNumber"]')?.innerText?.trim()
+        || document.querySelector('meta[name="citation_patent_number"]')?.content?.replace(/:/g, '');
+
+    // 如果以上都取不到，從 URL 中提取 (例如: https://patents.google.com/patent/TWI718793B/zh)
+    if (!patentID || patentID === "") {
+        const urlMatch = window.location.pathname.match(/\/patent\/([^\/]+)/);
+        if (urlMatch && urlMatch[1]) {
+            patentID = urlMatch[1];
+            console.log('Patent ID extracted from URL:', patentID);
+        }
+    }
+
+    // 最後備案
+    if (!patentID || patentID === "") {
+        patentID = "Unknown_ID";
+        console.warn('Unable to extract patent ID from page');
+    } else {
+        console.log('Patent ID found:', patentID);
+    }
 
     // 標題 - 嘗試多種選擇器
     const title = document.querySelector('span[itemprop="title"]')?.innerText?.trim()
         || document.querySelector('meta[name="DC.title"]')?.content?.trim()
         || document.title.split(' - ')[1]?.trim()
+        || document.title.split(' - ')[0]?.trim()
         || "No Title";
 
+    // 申請日期
+    const filingDate = document.querySelector('time[itemprop="filingDate"]')?.getAttribute('datetime') || "";
+    
+    // 優先權日期
+    const priorityDate = document.querySelector('time[itemprop="priorityDate"]')?.getAttribute('datetime') || "";
+    
     // 公開/公告日期
     const publicationDate = document.querySelector('time[itemprop="publicationDate"]')?.getAttribute('datetime')
         || document.querySelector('meta[name="DC.date"][scheme="issue"]')?.content
         || "";
-    const publicationYear = publicationDate.split('-')[0] || "";
-
-    // 申請日期
-    const filingDate = document.querySelector('time[itemprop="filingDate"]')?.getAttribute('datetime') || "";
-
-    // 優先權日期
-    const priorityDate = document.querySelector('time[itemprop="priorityDate"]')?.getAttribute('datetime') || "";
+    
+    // 年份：專利引用應以公告/核准年份為主
+    const publicationYear = publicationDate ? publicationDate.split('-')[0] : "";
 
     // 申請號
     const applicationNumber = document.querySelector('dd[itemprop="applicationNumber"]')?.innerText?.trim()
         || document.querySelector('meta[name="citation_patent_application_number"]')?.content?.replace(/:/g, '')
         || "";
 
-    // 國家代碼
-    const countryCode = document.querySelector('dd[itemprop="countryCode"]')?.innerText?.trim() || "";
+    // 國家代碼 - 多種來源
+    let countryCode = document.querySelector('dd[itemprop="countryCode"]')?.innerText?.trim()
+        || document.querySelector('meta[itemprop="countryCode"]')?.content?.trim()
+        || document.querySelector('meta[name="DC.contributor"][scheme="issuing_authority"]')?.content?.trim()
+        || "";
+    
+    // 備用：從專利號碼前綴提取國家代碼 (例如 TWI718793B → TW, US12345678B2 → US)
+    if (!countryCode && patentID && patentID !== 'Unknown_ID') {
+        const ccMatch = patentID.match(/^([A-Z]{2})/);
+        if (ccMatch) {
+            countryCode = ccMatch[1];
+            console.log('Country code extracted from patent ID:', countryCode);
+        }
+    }
 
     // 種類代碼 (kindCode)
     const kindCode = document.querySelector('meta[itemprop="kindCode"]')?.content || "";
+
+    // 專利類型描述（根據 kindCode 和 publicationDescription 判斷）
+    const publicationDescription = document.querySelector('meta[itemprop="publicationDescription"]')?.content || "";
+    let patentType = publicationDescription;
+    if (!patentType) {
+        // 根據 kindCode 推斷專利類型
+        if (/^A/.test(kindCode)) patentType = "Patent Application";
+        else if (/^B/.test(kindCode)) patentType = "Granted Patent";
+        else if (/^U/.test(kindCode)) patentType = "Utility Model";
+        else if (/^S/.test(kindCode)) patentType = "Design Patent";
+        else patentType = "Patent";
+    }
+
+    // 發證機構（根據國家代碼對應專利局名稱）
+    const issuingOrgMap = {
+        'US': 'United States Patent and Trademark Office',
+        'EP': 'European Patent Office',
+        'WO': 'World Intellectual Property Organization',
+        'JP': 'Japan Patent Office',
+        'CN': 'China National Intellectual Property Administration',
+        'KR': 'Korean Intellectual Property Office',
+        'TW': 'Taiwan Intellectual Property Office',
+        'DE': 'German Patent and Trade Mark Office',
+        'GB': 'UK Intellectual Property Office',
+        'FR': 'French National Institute of Industrial Property',
+        'CA': 'Canadian Intellectual Property Office',
+        'AU': 'IP Australia',
+        'IN': 'Indian Patent Office',
+        'RU': 'Federal Service for Intellectual Property (Russia)',
+        'BR': 'Brazilian National Institute of Industrial Property',
+    };
+    const issuingOrganization = issuingOrgMap[countryCode] || (countryCode ? `${countryCode} Patent Office` : "");
 
     // 發明人
     const inventors = Array.from(document.querySelectorAll('dd[itemprop="inventor"]'))
@@ -93,6 +158,8 @@ function extractPatentData() {
         applicationNumber,
         countryCode,
         kindCode,
+        patentType,
+        issuingOrganization,
         inventors,
         assignees,
         abstract,
@@ -118,42 +185,49 @@ function generateRIS(data) {
         ris.push(`AU  - ${inv}`);
     });
 
-    // 專利權人 (每個一行，使用 A2 作為次要作者/機構)
+    // 專利權人 / Assignee (A2 = Secondary Author，在 Patent 類型中對應 Assignee)
     data.assignees.forEach(assignee => {
         ris.push(`A2  - ${assignee}`);
     });
 
-    // 發布年份
+    // 發證機構 (PB = Publisher，在 Patent 類型中對應 Issuing Organization)
+    if (data.issuingOrganization) {
+        ris.push(`PB  - ${data.issuingOrganization}`);
+    }
+
+    // 公告/核准年份
     if (data.publicationYear) {
         ris.push(`PY  - ${data.publicationYear}`);
     }
 
-    // 發布日期
+    // 公告日期 (RIS 格式要求 YYYY/MM/DD/)
     if (data.publicationDate) {
-        ris.push(`DA  - ${data.publicationDate}`);
+        const daFormatted = data.publicationDate.replace(/-/g, '/') + '/';
+        ris.push(`DA  - ${daFormatted}`);
     }
 
     // 專利號碼
     ris.push(`M1  - ${data.patentID}`);
 
-    // 申請號
+    // 申請號 (SN = ISSN/ISBN，在 Patent 類型中對應 Application Number)
     if (data.applicationNumber) {
-        ris.push(`M2  - ${data.applicationNumber}`);
+        ris.push(`SN  - ${data.applicationNumber}`);
     }
 
-    // 國家/發行機構
+    // 國家代碼
     if (data.countryCode) {
         ris.push(`CY  - ${data.countryCode}`);
     }
 
-    // 專利種類代碼
-    if (data.kindCode) {
-        ris.push(`M3  - ${data.kindCode}`);
+    // 專利類型 (M3 = Type of Work，應為描述性文字)
+    if (data.patentType) {
+        ris.push(`M3  - ${data.patentType}`);
     }
 
-    // 申請日期 (使用 Y2 次要日期)
+    // 申請日期 (Y2 = Access Date/Filing Date，RIS 格式 YYYY/MM/DD/)
     if (data.filingDate) {
-        ris.push(`Y2  - ${data.filingDate}`);
+        const y2Formatted = data.filingDate.replace(/-/g, '/') + '/';
+        ris.push(`Y2  - ${y2Formatted}`);
     }
 
     // 摘要
@@ -201,22 +275,30 @@ function generateENW(data) {
         enw.push(`%A ${inv}`);
     });
 
-    // 專利權人
+    // 發證機構 (%I = Publisher / Issuing Organization)
+    if (data.issuingOrganization) {
+        enw.push(`%I ${data.issuingOrganization}`);
+    }
+
+    // 專利權人 (%E = Secondary Author，在 Patent 類型中對應 Assignee)
     data.assignees.forEach(assignee => {
-        enw.push(`%+ ${assignee}`);
+        enw.push(`%E ${assignee}`);
     });
 
-    // 發布年份
+    // 公告/核准年份
     if (data.publicationYear) {
         enw.push(`%D ${data.publicationYear}`);
     }
 
-    // 專利號碼
+    // 專利號碼 (%@ = Patent Number)
+    enw.push(`%@ ${data.patentID}`);
+
+    // Accession Number (%M)
     enw.push(`%M ${data.patentID}`);
 
-    // 申請號
-    if (data.applicationNumber) {
-        enw.push(`%9 ${data.applicationNumber}`);
+    // 專利類型 (%9 = Type of Work，描述性文字如 "Granted Patent")
+    if (data.patentType) {
+        enw.push(`%9 ${data.patentType}`);
     }
 
     // 國家
@@ -224,9 +306,19 @@ function generateENW(data) {
         enw.push(`%C ${data.countryCode}`);
     }
 
-    // 發布日期 (完整日期)
+    // 公告日期 (完整日期)
     if (data.publicationDate) {
         enw.push(`%8 ${data.publicationDate}`);
+    }
+
+    // 申請號 (放入 Notes 欄位，因 Patent 類型無專屬標籤)
+    if (data.applicationNumber) {
+        enw.push(`%Z Application Number: ${data.applicationNumber}`);
+    }
+
+    // 申請日期
+    if (data.filingDate) {
+        enw.push(`%[ ${data.filingDate}`);
     }
 
     // 摘要
@@ -248,6 +340,9 @@ function generateENW(data) {
     // 網頁連結
     enw.push(`%U ${data.url}`);
 
+    // 資料庫來源
+    enw.push(`%W Google Patents`);
+
     // 空行結束
     enw.push('');
     enw.push('');
@@ -259,9 +354,12 @@ function generateENW(data) {
 function generateSafeFilename(data, extension) {
     let filename = '';
 
+    console.log('Generating filename with data:', { patentID: data.patentID, title: data.title });
+
     // 優先使用專利號碼（如果不是 Unknown_ID）
     if (data.patentID && data.patentID !== 'Unknown_ID') {
         filename = data.patentID;
+        console.log('Using patent ID as filename:', filename);
     }
     // 其次使用標題（清理特殊字符）
     else if (data.title && data.title !== 'No Title') {
@@ -269,14 +367,18 @@ function generateSafeFilename(data, extension) {
             .replace(/[\\/:*?"<>|]/g, '_')  // 移除不合法的檔名字符
             .replace(/\s+/g, '_')             // 空格替換為底線
             .substring(0, 100);                // 限制長度
+        console.log('Using title as filename:', filename);
     }
     // 最後使用 patent 加時間戳
     else {
         const timestamp = new Date().getTime();
         filename = `patent_${timestamp}`;
+        console.log('Using timestamp as filename:', filename);
     }
 
-    return `${filename}.${extension}`;
+    const fullFilename = `${filename}.${extension}`;
+    console.log('Final filename:', fullFilename);
+    return fullFilename;
 }
 
 // 下載檔案

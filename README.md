@@ -43,6 +43,8 @@
 
 6. 安裝完成！圖示會出現在瀏覽器工具列
 
+![下載按鈕Demo](./docs/download-demo.png "下載按鈕")
+
 ## 🚀 使用方法
 
 1. 前往 [Google Patents](https://patents.google.com) 搜尋並開啟任一專利頁面
@@ -64,19 +66,20 @@
 | 專利類型 | TY | %0 | Patent |
 | 標題 | TI | %T | 專利名稱 |
 | 發明人 | AU | %A | 所有發明人 |
-| 專利權人 | A2 | %+ | 專利申請人/受讓人 |
-| 發布年份 | PY | %D | 公告年份 |
-| 發布日期 | DA | %8 | 完整公告日期 |
-| 專利號碼 | M1 | %M | 公告號 |
-| 申請號 | M2 | %9 | 申請號 |
+| 專利權人 | A2 | %E | Assignee（專利申請人/受讓人） |
+| 發證機構 | PB | %I | Issuing Organization（專利局） |
+| 公告年份 | PY | %D | 公告/核准年份 |
+| 公告日期 | DA | %8 | 完整公告日期 (YYYY/MM/DD/) |
+| 專利號碼 | M1 | %@ / %M | 公告號 |
+| 申請號 | SN | %Z | 申請號碼 |
 | 國家代碼 | CY | %C | 專利國家 |
-| 種類代碼 | M3 | - | Kind Code |
-| 申請日期 | Y2 | - | 申請日期 |
+| 專利種類 | M3 | %9 | Patent Type（如 Granted Patent） |
+| 申請日期 | Y2 | %[ | 申請日期 |
 | 摘要 | AB | %X | 專利摘要 |
 | 關鍵詞 | KW | %K | 技術關鍵詞 |
 | PDF 連結 | L1 | %> | 原文 PDF |
 | 網頁連結 | UR | %U | Google Patents 連結 |
-| 資料來源 | DB | - | Google Patents |
+| 資料來源 | DB | %W | Google Patents |
 
 ## 📝 匯出格式說明
 
@@ -105,7 +108,6 @@ ENW 是 EndNote 的標籤格式：
 gp2endnote/
 ├── manifest.json       # 瀏覽器擴充功能設定檔
 ├── content.js          # 主要功能腳本
-├── googlepatents.html  # 測試用 HTML 範例
 └── README.md           # 本說明檔案
 ```
 
@@ -150,6 +152,14 @@ gp2endnote/
 - 靈感來自研究人員對文獻管理的需求
 
 ## 📜 更新日誌
+
+### v1.2 (2026-02-09)
+- 🔧 修正 RIS/ENW 欄位對應，符合 EndNote Patent 類型標準
+- ✨ 新增發證機構自動對應（支援 15 個國家/地區專利局）
+- ✨ 新增專利類型自動判斷（Granted Patent / Patent Application / Utility Model 等）
+- 🐛 修正國家代碼擷取邏輯，從專利號前綴自動提取
+- 🐛 修正 Assignee 欄位對應（RIS: A2 / ENW: %E）
+- 🐛 修正 RIS 日期格式為 YYYY/MM/DD/
 
 ### v1.1 (2026-02-09)
 - ✨ 新增 ENW 格式支援
