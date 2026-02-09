@@ -258,7 +258,7 @@ function generateENW(data) {
 // 生成安全的檔名
 function generateSafeFilename(data, extension) {
     let filename = '';
-    
+
     // 優先使用專利號碼（如果不是 Unknown_ID）
     if (data.patentID && data.patentID !== 'Unknown_ID') {
         filename = data.patentID;
@@ -275,7 +275,7 @@ function generateSafeFilename(data, extension) {
         const timestamp = new Date().getTime();
         filename = `patent_${timestamp}`;
     }
-    
+
     return `${filename}.${extension}`;
 }
 
